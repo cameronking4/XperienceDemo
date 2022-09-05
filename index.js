@@ -1,22 +1,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.2/axios.min.js"></script>
 <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 <script nomodule src="https://unpkg.com/@google/model-viewer/dist/model-viewer-legacy.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.js"
-  integrity="sha512-djAJLNukP3WdWmwP/Y05w99aCX6u1jInpshdwiUKbXcQ9y/8BpMtsPsVrVyUbmtEx7wbqFpBq4sGOnIFVScFQQ=="
-  crossorigin="anonymous"
-  referrerpolicy="no-referrer"
-></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.js" integrity="sha512-djAJLNukP3WdWmwP/Y05w99aCX6u1jInpshdwiUKbXcQ9y/8BpMtsPsVrVyUbmtEx7wbqFpBq4sGOnIFVScFQQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://www.gstatic.com/firebasejs/9.9.4/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/5.9.1/firebase.js"></script>
 <script>
-
 // XPERIENCE SHOPPING AVATAR DEMO SCREEN
 // Developed by Cameron King (github.com/cameronking4)
-
-//VARIABLES
+var config = { apiKey: "AIzaSyDkVMB1m0DpAGIubJTpccff4ygaILhvPC4", authDomain: "xperience-webapp.firebaseapp.com", projectId: "xperience-webapp", storageBucket: "xperience-webapp.appspot.com", messagingSenderId: "522353425940", appId: "1:522353425940:web:a1325dc14e4e6485f67101"}; 
+firebase.initializeApp(config);
 var fileInput = document.getElementById('downloadBtn');
 let XperienceID = localStorage.getItem('XperienceID');
 let XperienceSuccess = localStorage.setItem('XperienceScanSuccess', false);
 let XperienceAvatar;
-//let objectURL;
 var XPERIENCEAVATAR; //avatar scan link (expires)
 var OBJfile; // converted GLB 2 OBJ file for measurement routine 
 const input = document.getElementById('fileupload');
@@ -24,133 +20,64 @@ const link = document.getElementById('link');
 var TAG; // ghost download tag
 var GIBBLY; // final GLB file (Avatar source)
 var BLOB; // temporary GLB file
-
-const glbMType = "model/gltf-binary";
-const zipMType = "application/zip";
-const objMType = "application/object";
-
 var objResulted = false;
-
-var myOBJzip;
-var myOBJFinal;
-
+var myOBJzip; var myOBJFinal;
 const PREFACE = "https://pure-castle-48918.herokuapp.com/"
+var mStatus = document.getElementById('MeasurementStatus');
+var mStatusButton = document.getElementById('MeasurementStatusBtn');
+var statusText = document.getElementById('statusText');
+var aBlob; var newZipEntry;
+let measureRequest = '';
+let fbOBJurl;
+var measurements;
+
 var myHeaders = new Headers();
 myHeaders.append("Accept", "application/json");
 myHeaders.append("Authorization", "Bearer MnyJqyXV7Ooi3f6gAAejMbDwcfWOXxlG9ap0vc0botTvGfoJdT_saBaotdBuuumMdPhxqVqDn0TAN6vzwoPJFg");
-var requestOptions = {
-	method: 'GET',
-	headers: myHeaders,
-	redirect: 'follow'
-};
+var requestOptions = {method: 'GET', headers: myHeaders, redirect: 'follow'};
 
-//QUERY PARAMETERS
+//Query params
 const queryString = window.location.search;
 console.log(queryString);
 const urlParams = new URLSearchParams(queryString);
-if (urlParams.has('XperienceID')) {
-	XperienceID = urlParams.get('XperienceID');
-}
-
-// UTILITIES 
+if (urlParams.has('XperienceID')) { XperienceID = urlParams.get('XperienceID');}
 
 // ajax helper
 function ajax(a, b, c) { // URL, callback, just a placeholder
-	c = new XMLHttpRequest;
-	c.open('GET', a);
-	c.setRequestHeader("Accept", "application/json");
-	c.setRequestHeader("Authorization", "Bearer MnyJqyXV7Ooi3f6gAAejMbDwcfWOXxlG9ap0vc0botTvGfoJdT_saBaotdBuuumMdPhxqVqDn0TAN6vzwoPJFg");
-	c.onload = b;
-	c.send();
+	c = new XMLHttpRequest; c.open('GET', a); c.setRequestHeader("Accept", "application/json"); c.setRequestHeader("Authorization", "Bearer MnyJqyXV7Ooi3f6gAAejMbDwcfWOXxlG9ap0vc0botTvGfoJdT_saBaotdBuuumMdPhxqVqDn0TAN6vzwoPJFg"); c.onload = b; c.send();
 }
-
-//download file from URL & set filename
-function downloadFile(url, fileName) {
-  fetch(url, { method: 'get', mode: 'no-cors', referrerPolicy: 'no-referrer' })
-    .then(res => res.blob())
-    .then(res => {
-      const aElement = document.createElement('a');
-      aElement.setAttribute('download', fileName);
-      const href = URL.createObjectURL(res);
-      aElement.href = href;
-      aElement.setAttribute('target', '_blank');
-      aElement.click();
-      URL.revokeObjectURL(href);
-    });
-};
-
-// Check a file blob by downloading
-function checkFile(fileBytes, name){
-	 const href = URL.createObjectURL(fileBytes);
-   downloadFile(href, name);
-}
-
 
 // Functions //
 
-function fetchGLBblob(url) {
-	fetch(url).then(res => res.blob()).then(file => {
-  	//console.log(file);
-		let tempUrl = URL.createObjectURL(file);
-		const aTag = document.createElement("a");
-		aTag.href = tempUrl;
-		aTag.value = tempUrl;
-		aTag.src = tempUrl;
-		aTag.download = "XperienceAvatar.glb";
-		document.body.appendChild(aTag);
-		//console.log(tempUrl);
-		BLOB = tempUrl;
-    GIBBLY = new File([BLOB], "XperienceAvatarGenerated.glb", {type:"model/gltf-binary", lastModified:new Date().getTime()});
-	  //aTag.click();
-		TAG = aTag;
-		URL.revokeObjectURL(tempUrl);
-	}).catch(() => {
-		console.log("Unable to download GLB blob");
-	});
-}
-
 function fetchFromURLandConvert(url) {
-  
-	fetch(url, { method: 'get'})	
+	fetch(url, { method: 'get'})
    .then(res => res.blob()).then(file => {
-    //BLOB = file;
-    var newFile = new File([file], "model_T.glb", {type: "model/gltf-binary", lastModified:new Date().getTime()});
-    localStorage.setItem('XperienceAvatarGLB', newFile);
-    console.log(newFile);
-    //blobURl = URL.createObjectURL(file);
-   	//BLOB = BLOB.slice(0, BLOB.size, 'model/gltf-binary');
-    //console.log(BLOB);
-    var newHeaders = new Headers();
-    newHeaders.append("Referer", "https://fabconvert.com/convert/x/to/obj");
-    newHeaders.append("Accept-Encoding", "gzip, deflate, br");
-    newHeaders.append("Accept", "*/*");
+      var newFile = new File([file], "model_T.glb", {type: "model/gltf-binary", lastModified:new Date().getTime()});
+      GIBBLY = newFile;
+      var storageRef = firebase.storage().ref('glb/' + XperienceID + ".glb");
+      var task = storageRef.put(GIBBLY);
+      let fbGLB = storageRef.getDownloadURL().then(function(downloadURL) {
+        localStorage.setItem('XperienceGLBurl', downloadURL);
+        fileInput.href = downloadURL;
+        return downloadURL;});
+      task.on('state_changed', function progress(snapshot) {}, function error(err) {}, function complete(percentage) {}); 
 
-    var formdata = new FormData();
-    formdata.append("PageId", "1");
-    formdata.append("FromId", "22");
-    formdata.append("ToId", "6");
-    formdata.append("to:", "obj");
-    formdata.append("ImageFilename", "XperienceAvatar.glb");
-    formdata.append("Files", newFile);
+      var newHeaders = new Headers();
+      newHeaders.append("Referer", "https://fabconvert.com/convert/x/to/obj"); newHeaders.append("Accept-Encoding", "gzip, deflate, br"); newHeaders.append("Accept", "*/*");
+      var formdata = new FormData();
+      formdata.append("PageId", "1"); formdata.append("FromId", "22"); formdata.append("ToId", "6"); formdata.append("to:", "obj"); formdata.append("ImageFilename", "XperienceAvatar.glb"); formdata.append("Files", newFile);
+      var requestOptions = { method: 'POST', headers: newHeaders, body: formdata };
 
-    var requestOptions = {
-      method: 'POST', headers: newHeaders, body: formdata
-    };
-
-    fetch("https://fabconvert.com/Home/ConvertFile", requestOptions)
-      .then(res => res.text())
-      .then(function (html) {
-      	objResulted = true;
-        var parser = new DOMParser();
-				var doc = parser.parseFromString(html, 'text/html');
-        //console.log(html);
-        HREF= doc.getElementById('targetFile');
-        HREF.click();
-        OBJfile = HREF.href;
-        console.log(OBJfile);
-        getZipFile(OBJfile,'XperienceOBJ', 'application/zip');
-      })
-      .catch(error => console.log('error', error));
+   		 fetch("https://fabconvert.com/Home/ConvertFile", requestOptions)
+        .then(res => res.text())
+        .then(function (html) {
+          objResulted = true;
+          var parser = new DOMParser();
+          var doc = parser.parseFromString(html, 'text/html');
+          HREF= doc.getElementById('targetFile'); HREF.click(); OBJfile = HREF.href;
+          getZipFile(OBJfile,'XperienceOBJ', 'application/zip');
+        })
+        .catch(error => console.log('error', error));
       
     })
     .catch((ex) => {
@@ -160,98 +87,116 @@ function fetchFromURLandConvert(url) {
 }
 
 function getZipFile(url, name, type){
-	console.log("getting zip file from url: " + url);
-	fetch(url, { method: 'get'})
+	 fetch(url, { method: 'get'})
    .then(res => res.blob()).then(file => {
-    	var newFile = new File([file], name, {type: type, lastModified:new Date().getTime()});
-      parseZipFile(newFile);
+    	var newFile = new File([file], name, {type: 'application/zip', lastModified:new Date().getTime()});
+      myOBJzip = newFile;
+      parseZipFile(myOBJzip);
+      mStatus.innerHTML = "STATUS UPDATE: STARTED (GLB file successfully zipped to OBJ format)"
     })
-    .catch((ex) => {
-      console.log("Unable to extract OBJ from Zip file");
-      console.log(ex);
-    });
+    .catch((ex) => {console.log(ex);});
 }
 
 function parseZipFile(zipFile) {
-  console.log('Parsing zip file ' + zipFile.name + ' ...');
-  // read the zip file
   JSZip.loadAsync(zipFile).then(
     function(zip) {
-      // get a promise for decoding each file in the zip
-      const fileParsePromises = [];
-      // note zip does not have a .map function, so we push manually into the array
-      zip.forEach(function(relativePath, zipEntry) {
+		 const fileParsePromises = [];
+     zip.forEach(function(relativePath, zipEntry) {
         console.log(' -> Parsing ' + zipEntry.name + ' ...');
-        // parse the file contents as a string
         fileParsePromises.push(
           zipEntry.async('string').then(function(data) {
-            console.log(' -> Finished parsing ' + zipEntry.name);
-            return {
-              name: zipEntry.name,
-              textData: data,
-              zipEntry: zipEntry,
-            };
-          })
-        );
+            aBlob = data; newZipEntry = zipEntry;           
+            return { name: zipEntry.name, textData: data, zipEntry: zipEntry};}));
       });
-      // when all files have been parsed run the processing step with
-      // the text content of the files.
       Promise.all(fileParsePromises).then(processDecompressedFiles);
     },
-    function(error) {
-      console.error('An error occurred processing the zip file.', error);
-    }
-  );
+    function(error) { console.error('An error occurred processing the zip file.', error);
+    });
 }
 
 function processDecompressedFiles(decompressedFiles) {
-  console.log('Got decompressed files', decompressedFiles);
-  var newFile = new File([decompressedFiles[0].zipEntry], decompressedFiles[0].name, {type: 'application/object', lastModified:new Date().getTime()});
-  myOBJFinal = newFile;
-  localStorage.setItem('XperienceAvatarOBJ', newFile);
-  console.log('Final OBJ returned');
+		var binaryData = [];
+    binaryData.push(aBlob);
+    myOBJzip = window.URL.createObjectURL(new Blob(binaryData, {type: "application/object"}))
+ 	  var newFile = new File(binaryData, 'XperienceAvarar.obj', {type: 'application/object', lastModified:new Date().getTime()});
+    myOBJFinal = newFile;
+    var storageRef = firebase.storage().ref('obj/' + XperienceID + ".obj");
+		var task = storageRef.put(myOBJFinal);
+    task.on('state_changed', 
+        function progress() {}, function error(err) {}, function complete() {}
+    ); 
+    fbOBJurl = storageRef.getDownloadURL().then(function(downloadURL) {localStorage.setItem('XperienceOBJurl', downloadURL);});
+    console.log('Final OBJ returned');
+    mStatus.innerHTML = "STATUS UPDATE: LOADED (OBJ format loaded, now processing...)"
 }
 
-function getZipFile(url, name, type){
-	console.log("getting zip file from url: " + url);
-	fetch(url, { method: 'get'})
-   .then(res => res.blob()).then(file => {
-    	var newFile = new File([file], name, {type: type, lastModified:new Date().getTime()});
-      parseZipFile(newFile);
+async function getMeasureRequest(objURL) {
+	var myHeaders = new Headers();
+  myHeaders.append("Origin", "https://photo-to-3d.3dmeasureup.com");
+  myHeaders.append("x-api-key", "NnDJOObcpItYZQPySFKJURBeZEmNvqjZCRSvlPhYV");
+  myHeaders.append("Content-Type", "application/json");
+  console.log(fbOBJurl);
+  var raw = JSON.stringify({ "type": "all", "fileurl": fbOBJurl, "auto_align": true, "filesource": "url", "filetype": "obj", "output": "json"});
+
+  const request = await fetch(PREFACE +"https://api.3dmu.prototechsolutions.com/prod/models/measure", { method: 'POST', headers: myHeaders, body: raw, redirect: 'follow'})
+    .then(res => res.json()) 
+  	.then(data => {
+    	measureRequest = data.requestId;
+      console.log('MEASURE REQUEST ', measureRequest);
+      mStatus.innerHTML = "STATUS UPDATE: THE MAGIC IS HAPPENING! (Analyzing OBJ file....)"
     })
-    .catch((ex) => {
-      console.log("Unable to extract OBJ from Zip file");
-      console.log(ex);
-    });
+    .catch(error => console.log('error', error));
+  this.request = request;
+
+ 	function calculate() {
+ 	 fetch(PREFACE +"https://api.3dmu.prototechsolutions.com/prod/models/metrics?requestId=" + measureRequest, {method: 'GET', headers: myHeaders, redirect: 'follow'})
+    .then(res => res.json()) 
+  	.then(data => {
+      if(data.statusCode == "200"){
+        measurements = data.body.result;
+        localStorage.setItem('xMeasurements', measurements);
+        console.log('MEASUREMENTS CALCULATED', measurements);
+        statusText.innerHTML = 'Your measurements have been calculated!';
+        mStatus.style.display = 'none'; mStatusButton.style.display = 'flex'; mStatusButton.href = '/measurements';
+      }
+      else{ setTimeout(calculate, 3000); }
+    })
+    .catch(error => console.log('error', error));
+  }
+  setTimeout(calculate, 1000);
 }
 
 function refresh() {
 	//Poll for avatar results, if exists, break cycle & display assets
-	if (XPERIENCEAVATAR != null || XperienceSuccess == true) {
-		let modelViewer = document.getElementById("modelViewer");
-		modelViewer.src = PREFACE + XPERIENCEAVATAR;
-    fetchFromURLandConvert(PREFACE + XPERIENCEAVATAR);
-    //convertToOBJ(GIBBLY);
-	} else { //poll
-		ajax(PREFACE + "https://api.developer.in3d.io/scans/" + XperienceID + "/result?type=glb",
-		 function(e) {
-			//console.log(this.response);
-			var data = JSON.parse(this.response);
-			XPERIENCEAVATAR = data.url;
-			console.log("XPERIENCE AVATAR DOWNLOAD LINK: ", XPERIENCEAVATAR);
-		});
-		setTimeout(refresh, 1000);
-	}
-	XperienceSuccess = true;
-  localStorage.setItem('XperienceScanSuccess', true);
-  localStorage.setItem('XperienceAvatarLink', XPERIENCEAVATAR);
-	fileInput.href = XPERIENCEAVATAR;
-	fileInput.download = "MyXperienceAvatar.glb";
+  let vData = localStorage.getItem('XperienceGLBurl');
+  let xMeasure = localStorage.getItem('xMeasurements');
+  if( vData != null || xMeasure == true) {
+  	modelViewer.src = PREFACE + vData;
+    statusText.innerHTML = 'Your measurements have been calculated!';
+    mStatus.style.display = 'none'; mStatusButton.style.display = 'flex';
+    mStatusButton.href = '/measurements'; fileInput.href = vData;
+    console.log(xMeasure);
+  }
+  else {
+    if (XPERIENCEAVATAR != null || XperienceSuccess == true) {
+      let modelViewer = document.getElementById("modelViewer");
+      modelViewer.src = PREFACE + XPERIENCEAVATAR;
+      fetchFromURLandConvert(PREFACE + XPERIENCEAVATAR);
+      fbOBJurl = localStorage.getItem("XperienceOBJurl");
+      getMeasureRequest(fbOBJurl);
+    } else { //poll
+      ajax(PREFACE + "https://api.developer.in3d.io/scans/" + XperienceID + "/result?type=glb",
+       function(e) {
+        var data = JSON.parse(this.response);
+        XPERIENCEAVATAR = data.url;
+      });
+      setTimeout(refresh, 1000);
+    }
+    XperienceSuccess = localStorage.setItem('XperienceScanSuccess', true);
+    fileInput.href = XPERIENCEAVATAR;
+    fileInput.download = "MyXperienceAvatar.glb";
+    }
 }
-
-
-// LFG!!
-
-setTimeout(refresh, 3000);
-
+setTimeout(refresh, 1000);
+document.getElementById("shareLink").addEventListener("click", navigator.clipboard.writeText(window.location).then(() => {alert('Xperience Avatar link copied!')}, () => {/*failed*/}));
 </script>
