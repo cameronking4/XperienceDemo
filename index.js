@@ -1,4 +1,4 @@
-<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.2/axios.min.js"></script>
+document.getElementById('body').innerHTML += '<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.2/axios.min.js"></script>
 <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 <script nomodule src="https://unpkg.com/@google/model-viewer/dist/model-viewer-legacy.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.js" integrity="sha512-djAJLNukP3WdWmwP/Y05w99aCX6u1jInpshdwiUKbXcQ9y/8BpMtsPsVrVyUbmtEx7wbqFpBq4sGOnIFVScFQQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -199,4 +199,4 @@ function refresh() {
 }
 setTimeout(refresh, 1000);
 document.getElementById("shareLink").addEventListener("click", navigator.clipboard.writeText(window.location).then(() => {alert('Xperience Avatar link copied!')}, () => {/*failed*/}));
-</script>
+</script>'
